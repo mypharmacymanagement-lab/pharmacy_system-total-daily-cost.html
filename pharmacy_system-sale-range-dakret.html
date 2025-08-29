@@ -1,0 +1,1490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Item Manager — Full</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; padding: 15px; color: #333; }
+    .main-container { display: flex; gap: 20px; }
+    .left-panel, .right-panel { flex: 1; min-width: 0; }
+    @media (max-width: 768px) {
+      .main-container { flex-direction: column; }
+    }
+    h2 { margin-bottom: 10px; font-size: 1.4rem; }
+    input[type="text"], input[type="number"], input[type="date"] {
+      padding: 10px; font-size: 14px; border: 1px solid #ccc;
+      border-radius: 6px; margin: 5px; flex: 1; min-width: 120px;
+    }
+    button { padding: 8px 12px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 14px; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-warning { background: #ffc107; color: black; }
+    .btn-success { background: #28a745; color: white; }
+    table { border-collapse: collapse; margin-top: 15px; width: 100%;
+      background: white; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #f1f3f5; }
+    .form-container { display: flex; flex-wrap: wrap; gap: 8px; background: white;
+      padding: 10px; margin-top: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .table-container { overflow-x: auto; }
+    .invoice-card {
+      background: white;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .invoice-items { margin-top: 8px; display: none; }
+    .invoice-items table { width: 100%; border-collapse: collapse; border: 1px solid #ddd; margin-top: 5px; }
+    .invoice-items th, .invoice-items td { border: 1px solid #ddd; padding: 5px; font-size: 13px; }
+    .returned-badge { color: #b71c1c; font-weight: 700; margin-left: 8px; }
+    .small-muted { color: #666; font-size: 12px; margin-left:6px; }
+    .return-form { background: #fff9e6; padding: 8px; border-radius: 6px; margin-top: 8px; }
+    /* Daily Sales Section */
+    .daily-sales-section {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      margin-bottom: 15px;
+      overflow: hidden;
+    }
+    .daily-sales-header {
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #f1f3f5;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .daily-sales-header h3 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    #dailySalesContent {
+      padding: 15px;
+    }
+    .daily-sales-search {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .daily-sales-search input[type="date"] {
+      min-width: 140px;
+    }
+    .sales-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: space-between;
+    }
+    .sales-card {
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      padding: 15px;
+      min-width: 150px;
+      flex: 1;
+      text-align: center;
+    }
+    .sales-card h4 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: #495057;
+      font-size: 1rem;
+    }
+    .sales-amount {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #28a745;
+    }
+    .sales-count {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #007bff;
+    }
+    @media print {
+      #addBtn, #search, #searchInvoiceDate, .btn-primary, .btn-secondary, .btn-danger, .btn-warning, 
+      .daily-sales-section { display: none !important; }
+      .form-container, .table-container, #invoiceHistoryContainer { display: none !important; }
+      #invoiceContainer { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+  <div class="left-panel">
+    <h2>Item Manager</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+  <input type="text" id="search" placeholder="Search items by name or barcode...">
+  <button id="addBtn" class="btn-primary">+ Add Item</button>
+  <button id="backupBtn" class="btn-success">Backup Data</button>
+  <button id="restoreBtn" class="btn-warning">Restore Data</button>
+  <button id="exportPdfBtn" class="btn-secondary">Export PDF</button>
+</div>
+
+<!-- Daily Sales Summary Section -->
+<div class="daily-sales-section">
+  <div class="daily-sales-header">
+    <h3>Daily Sales Summary</h3>
+    <button id="toggleDailySalesBtn" class="btn-secondary">Hide</button>
+  </div>
+  <div id="dailySalesContent">
+    <div class="daily-sales-search">
+      <input type="date" id="searchFromDate" value="" placeholder="From Date (or Single Date)">
+      <input type="date" id="searchToDate" value="" placeholder="To Date (optional)">
+      <button id="searchSalesBtn" class="btn-primary">Search Sales</button>
+      <button id="todaysSalesBtn" class="btn-secondary">Today</button>
+      <button id="thisMonthBtn" class="btn-secondary">This Month</button>
+    </div>
+    <div id="dailySalesTotalDisplay">
+      <div class="sales-summary">
+        <div class="sales-card">
+          <h4>Total Sales</h4>
+          <div id="totalSalesAmount" class="sales-amount">0.00</div>
+        </div>
+        <div class="sales-card">
+          <h4>Items Sold</h4>
+          <div id="totalItemsSold" class="sales-count">0</div>
+        </div>
+        <div class="sales-card">
+          <h4>Invoices</h4>
+          <div id="totalInvoices" class="sales-count">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="form-container" id="formContainer" style="display:none;">
+  <input type="text" id="newItem" placeholder="Item name">
+  <input type="text" id="newBarcode" placeholder="Barcode">
+  <input type="number" id="newCost" placeholder="Cost">
+  <input type="number" id="newPrice" placeholder="Price">
+  <input type="number" id="newStock" placeholder="Stock">
+  <input type="text" id="newExpiry" placeholder="MM/YYYY" maxlength="7">
+  <button id="saveItem" class="btn-primary">Save</button>
+  <button id="cancelEdit" class="btn-secondary">Cancel</button>
+</div>
+
+<div class="table-container">
+  <table id="results">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Cost</th>
+        <th>Price</th>
+        <th>Stock</th>
+        <th>Expiry</th>
+        <th style="width: 240px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+  </div>
+  <div class="right-panel">
+    <h2>Invoice</h2>
+<div id="invoiceContainer" style="display:none; background:white; padding:10px; border-radius:8px; margin-top:15px;">
+  <h2 style="text-align: center;">My Pharmacy</h2>
+  <div style="margin-bottom:10px;">
+    <strong>Invoice #:</strong> <span id="invoiceNumber">1</span><br>
+    <strong>Date:</strong> <span id="invoiceDate"></span>
+  </div>
+  <table id="invoiceTable" style="width:100%; border-collapse: collapse; border: 1px solid #000;">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Price</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <h3 style="text-align:right;">Total: <strong><span id="invoiceTotal">0</span></strong></h3>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+    <button id="printPreviewBtn" class="btn-secondary">Print Preview</button>
+    <button id="sellOnlyBtn" class="btn-danger">Sell Only</button>
+    <button id="sellAndPrintBtn" class="btn-primary">Sell & Print</button>
+    <button id="saveEditedInvoiceBtn" class="btn-warning" style="display:none;">Save Edited Invoice</button>
+    <button id="clearInvoiceBtn" class="btn-danger">Clear</button>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+  <h2 style="margin-bottom:0;">Invoice History</h2>
+  <button id="toggleHistoryBtn" class="btn-secondary">Hide History</button>
+</div>
+<div id="invoiceHistorySection">
+  <input type="date" id="searchInvoiceDate">
+  <div id="invoiceHistoryContainer" style="margin-top:10px;"></div>
+</div>
+
+<script>
+/* ===========================
+   State & initial data
+   =========================== */
+let data = JSON.parse(localStorage.getItem('items')) || [
+  { item: "vitamind3+k2", barcode: "8901000000001", cost: 11000, price: 13200, stock: 10 },
+  { item: "sina mouth wash", barcode: "8901000000002", cost: 1500, price: 1800, stock: 3 },
+  { item: "zeloxim 7.5mg 1*10", barcode: "8901000000003", cost: 1400, price: 1680, stock: 0 }
+];
+let invoicesHistory = JSON.parse(localStorage.getItem('invoicesHistory')) || [];
+let invoiceCounter = parseInt(localStorage.getItem('invoiceCounter')) || 1;
+let showAllItems = false; // By default, show only 5 items
+let historyVisible = true; // By default, invoice history is visible
+
+// invoiceEditor: current working invoice (remaining qtys) { item, price, qty }
+let invoiceEditor = []; 
+let editIndex = null;
+let editingInvoiceNumber = null;
+let originalInvoiceForEdit = null;
+
+/* ===========================
+   Persistence helpers
+   =========================== */
+function saveToLocalStorage() { localStorage.setItem('items', JSON.stringify(data)); }
+function saveInvoicesHistoryToStorage() { localStorage.setItem('invoicesHistory', JSON.stringify(invoicesHistory)); }
+
+/* ===========================
+   Utilities
+   =========================== */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function formatNumber(n) { return isNaN(n) ? n : parseFloat(parseFloat(n).toFixed(2)); }
+function findItemByName(name) { return data.find(d => d.item === name); }
+
+/* ===========================
+   Render items table
+   =========================== */
+function renderTable(items) {
+  const tbody = document.querySelector("#results tbody");
+  tbody.innerHTML = "";
+  
+  // Determine how many items to show
+  const itemsToShow = showAllItems ? items : items.slice(0, 5);
+  
+  itemsToShow.forEach((row) => {
+    // Find the original index in the main data array
+    const dataIndex = data.findIndex(item => item === row);
+    
+    tbody.innerHTML += `<tr>
+      <td>${escapeHtml(row.item)}</td>
+      <td>${formatNumber(row.cost)}</td>
+      <td>${formatNumber(row.price)}</td>
+      <td>${formatNumber(row.stock)}</td>
+      <td>${row.expiry || '-'}</td>
+      <td>
+        <button class="btn-primary" onclick="editItem(${dataIndex})">Edit</button>
+        <button class="btn-danger" onclick="deleteItem(${dataIndex})">Delete</button>
+        <button class="btn-secondary" onclick="addToInvoice(${dataIndex})">Sell</button>
+      </td>
+    </tr>`;
+  });
+  
+  // Add toggle button row if there are more than 5 items
+  if (items.length > 5) {
+    const toggleButtonHtml = `<tr>
+      <td colspan="6" style="text-align:center;">
+        <button id="toggleItemsBtn" class="btn-secondary" onclick="toggleItemsDisplay()">
+          ${showAllItems ? 'Show Less Items' : `Show All Items (${items.length - 5} more)`}
+        </button>
+      </td>
+    </tr>`;
+    tbody.innerHTML += toggleButtonHtml;
+  }
+}
+
+/* ===========================
+   Expiry Date Functions
+   =========================== */
+function validateExpiryDate(expiry) {
+  if (!expiry) return true; // Empty is allowed
+  const regex = /^(0[1-9]|1[0-2])\/\d{4}$/;
+  return regex.test(expiry);
+}
+
+function formatExpiryDate(input) {
+  // Remove any non-digit characters except slash
+  let value = input.replace(/[^\d]/g, '');
+  
+  // Add slash after 2 digits
+  if (value.length >= 2) {
+    value = value.substring(0, 2) + '/' + value.substring(2, 6);
+  }
+  
+  return value;
+}
+
+// Add event listener for automatic formatting and tab close prevention
+document.addEventListener('DOMContentLoaded', function() {
+  const expiryInput = document.getElementById('newExpiry');
+  if (expiryInput) {
+    expiryInput.addEventListener('input', function(e) {
+      const cursorPosition = e.target.selectionStart;
+      const oldValue = e.target.value;
+      const newValue = formatExpiryDate(oldValue);
+      
+      e.target.value = newValue;
+      
+      // Adjust cursor position
+      if (newValue.length > oldValue.length && cursorPosition === 2) {
+        e.target.setSelectionRange(3, 3);
+      }
+    });
+  }
+  
+  // Prevent tab closing without confirmation
+  window.addEventListener('beforeunload', function(e) {
+    const confirmationMessage = 'Do you want to exit the system? Any unsaved changes will be lost.';
+    e.preventDefault();
+    e.returnValue = confirmationMessage;
+    return confirmationMessage;
+  });
+  
+  // Export PDF functionality
+  document.getElementById('exportPdfBtn').addEventListener('click', function() {
+    exportItemsToPDF();
+  });
+});
+
+// Function to export items list to PDF
+function exportItemsToPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Add title
+  doc.setFontSize(18);
+  doc.text('Item Manager - Items List (Sorted by Expiry)', 14, 22);
+  
+  // Add current date and sorting info
+  doc.setFontSize(12);
+  const currentDate = new Date().toLocaleDateString();
+  doc.text(`Generated on: ${currentDate}`, 14, 32);
+  doc.setFontSize(10);
+  doc.text('Items sorted by expiration date (nearest to farthest)', 14, 40);
+  
+  // Sort items by expiration date (nearest to farthest)
+  const sortedData = [...data].sort((a, b) => {
+    const expiryA = a.expiry || '';
+    const expiryB = b.expiry || '';
+    
+    // Handle empty expiry dates - put them at the end
+    if (!expiryA && !expiryB) return 0;
+    if (!expiryA) return 1;
+    if (!expiryB) return -1;
+    
+    // Parse MM/YYYY format to comparable dates
+    const parseExpiry = (expiry) => {
+      const [month, year] = expiry.split('/');
+      return new Date(parseInt(year), parseInt(month) - 1);
+    };
+    
+    try {
+      const dateA = parseExpiry(expiryA);
+      const dateB = parseExpiry(expiryB);
+      return dateA - dateB; // Ascending order (nearest first)
+    } catch (e) {
+      // If parsing fails, fall back to string comparison
+      return expiryA.localeCompare(expiryB);
+    }
+  });
+  
+  // Prepare table data
+  const tableData = [];
+  sortedData.forEach((item, index) => {
+    // Add expiry status indicator
+    let expiryStatus = '';
+    if (item.expiry) {
+      try {
+        const [month, year] = item.expiry.split('/');
+        const expiryDate = new Date(parseInt(year), parseInt(month) - 1);
+        const now = new Date();
+        const currentMonth = new Date(now.getFullYear(), now.getMonth());
+        
+        if (expiryDate <= currentMonth) {
+          expiryStatus = ' (EXPIRED)';
+        } else if (expiryDate <= new Date(now.getFullYear(), now.getMonth() + 3)) {
+          expiryStatus = ' (SOON)';
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+    
+    tableData.push([
+      (index + 1).toString(), // Add row number
+      item.item || '-',
+      item.cost ? parseFloat(parseFloat(item.cost).toFixed(2)) : '-',
+      item.price ? parseFloat(parseFloat(item.price).toFixed(2)) : '-',
+      item.stock ? parseFloat(parseFloat(item.stock).toFixed(2)) : '-',
+      (item.expiry || '-') + expiryStatus
+    ]);
+  });
+  
+  // Create table
+  doc.autoTable({
+    startY: 45,
+    head: [['#', 'Name', 'Cost', 'Price', 'Stock', 'Expiry Status']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255,
+      fontStyle: 'bold'
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 2
+    },
+    columnStyles: {
+      0: { cellWidth: 15, halign: 'center' }, // Row number
+      1: { cellWidth: 45 }, // Name
+      2: { cellWidth: 20, halign: 'right' }, // Cost
+      3: { cellWidth: 20, halign: 'right' }, // Price
+      4: { cellWidth: 20, halign: 'right' }, // Stock
+      5: { cellWidth: 35, halign: 'center' } // Expiry with status
+    },
+    didParseCell: function(data) {
+      // Color code expiry cells based on status
+      if (data.column.index === 5 && data.cell.text[0]) {
+        const cellText = data.cell.text[0];
+        if (cellText.includes('EXPIRED')) {
+          data.cell.styles.fillColor = [220, 53, 69]; // Red
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (cellText.includes('SOON')) {
+          data.cell.styles.fillColor = [255, 193, 7]; // Yellow
+          data.cell.styles.textColor = [0, 0, 0];
+        }
+      }
+    }
+  });
+  
+  // Add legend
+  const finalY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(10);
+  doc.text('Legend:', 14, finalY);
+  doc.setFillColor(220, 53, 69);
+  doc.rect(14, finalY + 3, 4, 3, 'F');
+  doc.text('Expired', 20, finalY + 6);
+  doc.setFillColor(255, 193, 7);
+  doc.rect(45, finalY + 3, 4, 3, 'F');
+  doc.text('Expires Soon (≤3 months)', 51, finalY + 6);
+  
+  // Add footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
+    doc.text(`Total Items: ${data.length}`, 14, doc.internal.pageSize.height - 10);
+  }
+  
+  // Save the PDF
+  const fileName = `Items_List_Sorted_By_Expiry_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
+}
+
+/* ===========================
+   Add / Edit Items UI
+   =========================== */
+document.getElementById("addBtn").addEventListener("click", () => {
+  document.getElementById("formContainer").style.display = "flex";
+  document.querySelectorAll("#formContainer input").forEach(inp => inp.value = "");
+  editIndex = null;
+  document.getElementById("newItem").focus();
+});
+document.getElementById("cancelEdit").addEventListener("click", () => {
+  document.getElementById("formContainer").style.display = "none";
+  editIndex = null;
+});
+
+document.getElementById("saveItem").addEventListener("click", () => {
+  const itemName = document.getElementById("newItem").value.trim();
+  const itemBarcode = document.getElementById("newBarcode").value.trim();
+  const itemCost = parseFloat(document.getElementById("newCost").value);
+  const itemPrice = parseFloat(document.getElementById("newPrice").value);
+  const itemStock = parseFloat(document.getElementById("newStock").value);
+  const itemExpiry = document.getElementById("newExpiry").value.trim();
+  
+  if (!itemName || isNaN(itemCost) || isNaN(itemPrice) || isNaN(itemStock)) {
+    alert("Please fill all fields correctly.");
+    return;
+  }
+  
+  // Validate expiry date format if provided
+  if (itemExpiry && !validateExpiryDate(itemExpiry)) {
+    alert("Please enter expiry date in MM/YYYY format (e.g., 02/2025).");
+    return;
+  }
+  
+  if (editIndex !== null) {
+    data[editIndex] = { item: itemName, barcode: itemBarcode, cost: itemCost, price: itemPrice, stock: itemStock, expiry: itemExpiry };
+  } else {
+    data.push({ item: itemName, barcode: itemBarcode, cost: itemCost, price: itemPrice, stock: itemStock, expiry: itemExpiry });
+  }
+  saveToLocalStorage();
+  renderTable(data);
+  document.getElementById("formContainer").style.display = "none";
+  editIndex = null;
+});
+
+/* ===========================
+   Item actions
+   =========================== */
+function editItem(index) {
+  document.getElementById("formContainer").style.display = "flex";
+  document.getElementById("newItem").value = data[index].item;
+  document.getElementById("newBarcode").value = data[index].barcode || "";
+  document.getElementById("newCost").value = data[index].cost;
+  document.getElementById("newPrice").value = data[index].price;
+  document.getElementById("newStock").value = data[index].stock;
+  document.getElementById("newExpiry").value = data[index].expiry || "";
+  editIndex = index;
+  document.getElementById("newItem").focus();
+}
+function deleteItem(index) {
+  if (!confirm("Delete this item?")) return;
+  data.splice(index,1);
+  saveToLocalStorage();
+  renderTable(data);
+}
+
+/* ===========================
+   Invoice editor & rendering
+   =========================== */
+function startNewInvoiceDisplay() {
+  editingInvoiceNumber = null;
+  originalInvoiceForEdit = null;
+  invoiceEditor = [];
+  document.getElementById("invoiceNumber").textContent = invoiceCounter;
+  document.getElementById("invoiceDate").textContent = new Date().toLocaleDateString();
+  exitEditMode();
+  document.getElementById("invoiceContainer").style.display = "none";
+}
+startNewInvoiceDisplay();
+
+function addToInvoice(index) {
+  const item = data[index];
+  if (!item) return;
+  if (item.stock <= 0) { alert("This item is out of stock!"); return; }
+  
+  // Ask for quantity
+  let qtyToSell = parseFloat(prompt(`Enter quantity to add to invoice (Available: ${formatNumber(item.stock)}):`, "1"));
+  if (isNaN(qtyToSell) || qtyToSell <= 0) { alert("Invalid quantity!"); return; }
+  if (qtyToSell > item.stock + 1e-9) { alert("Not enough stock available!"); return; }
+  
+  // Set the price to the default item price
+  let itemPrice = item.price;
+  
+  // Add to invoice editor with potentially custom price
+  const existing = invoiceEditor.find(i => i.item === item.item && i.price === itemPrice);
+  if (existing) {
+    existing.qty = parseFloat((existing.qty + qtyToSell).toFixed(2));
+  } else {
+    // If same item with different price, add as new line
+    invoiceEditor.push({ 
+      item: item.item, 
+      price: itemPrice, 
+      qty: parseFloat(qtyToSell.toFixed(2)),
+      originalPrice: item.price // Store original price for reference
+    });
+  }
+  renderInvoice();
+}
+
+function renderInvoice() {
+  const tbody = document.querySelector("#invoiceTable tbody");
+  const totalEl = document.getElementById("invoiceTotal");
+  document.getElementById("invoiceContainer").style.display = invoiceEditor.length ? "block" : "none";
+  tbody.innerHTML = "";
+  let total = 0;
+  invoiceEditor.forEach((row, i) => {
+    const rowTotal = row.qty * row.price;
+    total += rowTotal;
+    
+    // Determine if price is custom (different from original stock price)
+    const isPriceCustom = row.originalPrice && row.price !== row.originalPrice;
+    const priceDisplay = isPriceCustom 
+      ? `<span style="text-decoration:line-through;color:#999;font-size:0.9em;">${formatNumber(row.originalPrice)}</span> ${formatNumber(row.price)}`
+      : formatNumber(row.price);
+      
+    tbody.innerHTML += `<tr>
+      <td style="border:1px solid #000;">${escapeHtml(row.item)}</td>
+      <td style="border:1px solid #000;">
+        <input type="number" step="0.01" value="${row.qty}" min="0" style="width:90px;"
+          oninput="updateInvoiceQty(${i}, this.value)">
+      </td>
+      <td style="border:1px solid #000;">
+        <div style="display: flex; align-items: center; gap: 2px;">
+          <input type="number" step="0.01" min="0" value="${row.price}" 
+            style="width:90px; ${row.originalPrice && row.price !== row.originalPrice ? 'background-color: #fffacd; border: 1px solid #ffd700;' : ''}" 
+            onchange="updateInvoicePrice(${i}, this.value)"
+            oninput="updateInvoicePrice(${i}, this.value)">
+          ${row.originalPrice && row.price !== row.originalPrice ? 
+            `<button onclick="resetPrice(${i})" title="Reset to original price" style="padding: 2px 4px; font-size: 10px; background-color: #f0f0f0; border: 1px solid #ccc; cursor: pointer;">↺</button>` : 
+            ''}
+        </div>
+      </td>
+      <td style="border:1px solid #000;">${parseFloat(rowTotal.toFixed(2))}</td>
+      <td style="border:1px solid #000;"><button onclick="removeFromInvoice(${i})" class="btn-danger">X</button></td>
+    </tr>`;
+  });
+  totalEl.textContent = parseFloat(total.toFixed(2));
+}
+
+function updateInvoiceQty(index, newQty) {
+  newQty = parseFloat(newQty);
+  if (isNaN(newQty) || newQty < 0) return;
+  invoiceEditor[index].qty = parseFloat(newQty.toFixed(2));
+  renderInvoice();
+}
+
+// Keep track of price update timers
+const priceUpdateTimers = {};
+
+function updateInvoicePrice(index, newPrice) {
+  newPrice = parseFloat(newPrice);
+  if (isNaN(newPrice) || newPrice < 0) return;
+  
+  // Store original price if not already saved
+  const item = invoiceEditor[index];
+  if (!item.hasOwnProperty('originalPrice')) {
+    item.originalPrice = item.price;
+  }
+  
+  // Update the price in the data model
+  item.price = parseFloat(newPrice.toFixed(2));
+  
+  // Update just the total for this row without re-rendering entire invoice
+  const rowTotal = item.qty * item.price;
+  const rowElement = document.querySelector(`#invoiceTable tbody tr:nth-child(${index + 1})`);
+  if (rowElement) {
+    const totalCell = rowElement.querySelector('td:nth-child(4)');
+    if (totalCell) {
+      totalCell.textContent = parseFloat(rowTotal.toFixed(2));
+    }
+  }
+  
+  // Update invoice total
+  let total = 0;
+  for (const row of invoiceEditor) {
+    total += row.qty * row.price;
+  }
+  document.getElementById("invoiceTotal").textContent = parseFloat(total.toFixed(2));
+  
+  // Clear any existing timer for this index
+  if (priceUpdateTimers[index]) {
+    clearTimeout(priceUpdateTimers[index]);
+  }
+  
+  // Only do a full re-render after user has stopped typing for 1 second
+  priceUpdateTimers[index] = setTimeout(() => {
+    renderInvoice();
+    delete priceUpdateTimers[index];
+  }, 1000);
+}
+
+// Function to reset price to original value
+function resetPrice(index) {
+  if (invoiceEditor[index] && invoiceEditor[index].originalPrice) {
+    invoiceEditor[index].price = invoiceEditor[index].originalPrice;
+    renderInvoice();
+  }
+}
+
+// The editInvoicePrice function is replaced by the updateInvoicePrice function
+
+function removeFromInvoice(i) { 
+  invoiceEditor.splice(i,1); 
+  renderInvoice(); 
+}
+
+/* ===========================
+   Print preview (new window) — does NOT change stock
+   =========================== */
+document.getElementById("printPreviewBtn").addEventListener("click", () => {
+  if (invoiceEditor.length === 0) { alert("Invoice is empty"); return; }
+  const w = window.open("", "_blank");
+  const style = `<style>body{font-family:Segoe UI, sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:6px;text-align:left}h2{text-align:center}</style>`;
+  const invoiceHtml = document.getElementById("invoiceContainer").innerHTML;
+  w.document.open();
+  w.document.write(`<html><head><title>Invoice Preview</title>${style}</head><body>${invoiceHtml}</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+});
+
+/* ===========================
+   Saving new invoice record helper
+   =========================== */
+function saveInvoiceHistoryRecord(number, date, editorItems, total) {
+  const itemsForHistory = editorItems.map(e => ({ item: e.item, price: e.price, qtySold: parseFloat(e.qty.toFixed(2)), qtyReturned: 0 }));
+  invoicesHistory.push({ number, date, items: itemsForHistory, total, returned: false });
+  saveInvoicesHistoryToStorage();
+  
+  // Update daily sales if the invoice date is within the currently selected range
+  const fromDate = document.getElementById("searchFromDate").value;
+  const toDate = document.getElementById("searchToDate").value || fromDate;
+  if (date >= fromDate && date <= toDate) {
+    calculateSales(fromDate, toDate);
+  }
+}
+
+/* ===========================
+   Sell actions
+   =========================== */
+document.getElementById("sellOnlyBtn").addEventListener("click", () => {
+  if (invoiceEditor.length === 0) { alert("Invoice is empty"); return; }
+  if (!confirm("Do you want to sell this invoice?")) return;
+  // validate availability
+  for (const invItem of invoiceEditor) {
+    const stockItem = data.find(d => d.item === invItem.item);
+    if (!stockItem || stockItem.stock + 1e-9 < invItem.qty) { alert(`Not enough stock for ${invItem.item}`); return; }
+  }
+  for (const invItem of invoiceEditor) {
+    const stockItem = data.find(d => d.item === invItem.item);
+    stockItem.stock = parseFloat((stockItem.stock - invItem.qty).toFixed(2));
+  }
+  const number = invoiceCounter;
+  const date = new Date().toISOString().split('T')[0];
+  const total = parseFloat(document.getElementById("invoiceTotal").textContent);
+  saveInvoiceHistoryRecord(number, date, invoiceEditor, total);
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+  saveToLocalStorage();
+  invoiceEditor = [];
+  document.getElementById("invoiceContainer").style.display = "none";
+  renderTable(data);
+  renderInvoiceHistory();
+});
+
+document.getElementById("sellAndPrintBtn").addEventListener("click", () => {
+  if (invoiceEditor.length === 0) { alert("Invoice is empty"); return; }
+  if (!confirm("Do you want to sell this invoice and print?")) return;
+  // validate
+  for (const invItem of invoiceEditor) {
+    const stockItem = data.find(d => d.item === invItem.item);
+    if (!stockItem || stockItem.stock + 1e-9 < invItem.qty) { alert(`Not enough stock for ${invItem.item}`); return; }
+  }
+  for (const invItem of invoiceEditor) {
+    const stockItem = data.find(d => d.item === invItem.item);
+    stockItem.stock = parseFloat((stockItem.stock - invItem.qty).toFixed(2));
+  }
+  const number = invoiceCounter;
+  const date = new Date().toISOString().split('T')[0];
+  const total = parseFloat(document.getElementById("invoiceTotal").textContent);
+  saveInvoiceHistoryRecord(number, date, invoiceEditor, total);
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+  saveToLocalStorage();
+
+  // print in new window
+  const w = window.open("", "_blank");
+  const style = `<style>body{font-family:Segoe UI, sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:6px;text-align:left}h2{text-align:center}</style>`;
+  const invoiceHtml = document.getElementById("invoiceContainer").innerHTML;
+  w.document.open();
+  w.document.write(`<html><head><title>Invoice</title>${style}</head><body>${invoiceHtml}</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+
+  invoiceEditor = [];
+  document.getElementById("invoiceContainer").style.display = "none";
+  renderTable(data);
+  renderInvoiceHistory();
+});
+
+/* ===========================
+   Clear invoice
+   =========================== */
+document.getElementById("clearInvoiceBtn").addEventListener("click", () => {
+  if (!confirm("Clear current invoice?")) return;
+  invoiceEditor = [];
+  document.getElementById("invoiceContainer").style.display = "none";
+  renderInvoice();
+  startNewInvoiceDisplay();
+});
+
+/* ===========================
+   Invoice history rendering
+   =========================== */
+function renderInvoiceHistory() {
+  const container = document.getElementById("invoiceHistoryContainer");
+  container.innerHTML = "";
+  let filterDate = document.getElementById("searchInvoiceDate").value;
+  let filtered = invoicesHistory;
+  if (filterDate) filtered = invoicesHistory.filter(inv => inv.date === filterDate);
+  if (filtered.length === 0) { container.innerHTML = "<p>No invoices found.</p>"; return; }
+  filtered.forEach(inv => {
+    let card = document.createElement("div");
+    card.className = "invoice-card";
+    card.innerHTML = `
+      <div class="invoice-header">
+        <div><strong>Invoice #${inv.number}</strong> | Date: ${inv.date}${inv.returned ? '<span class="returned-badge"> (Returned)</span>' : ''}</div>
+        <div>Total: ${parseFloat(parseFloat(inv.total).toFixed(2))}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-warning" onclick="editInvoice(${inv.number})" ${inv.returned ? 'disabled' : ''}>✏ Edit</button>
+          <button class="btn-danger" onclick="deleteInvoice(${inv.number})">🗑 Delete</button>
+          <button class="btn-secondary" onclick="toggleInvoiceDetails(${inv.number})">Show Items</button>
+          <button class="btn-primary" onclick="returnAllInvoice(${inv.number})" ${inv.returned ? 'disabled' : ''}>↩ Return All</button>
+          <button class="btn-secondary" onclick="toggleReturnForm(${inv.number})" ${inv.returned ? 'disabled' : ''}>Return Items</button>
+        </div>
+      </div>
+      <div class="invoice-items" id="details-${inv.number}">
+        <table>
+          <thead><tr><th>Item</th><th>Remaining</th><th>Price</th><th>Returned</th></tr></thead>
+          <tbody>
+            ${inv.items.map(it => {
+              const rem = parseFloat(it.qtySold) - parseFloat(it.qtyReturned || 0);
+              const returnedText = it.qtyReturned ? ` (Returned ${parseFloat(parseFloat(it.qtyReturned).toFixed(2))})` : '';
+              return `<tr>
+                <td>${escapeHtml(it.item)}${it.qtyReturned ? '<span class="small-muted">'+returnedText+'</span>' : ''}</td>
+                <td>${parseFloat(rem.toFixed(2))}</td>
+                <td>${parseFloat(parseFloat(it.price).toFixed(2))}</td>
+                <td>${parseFloat((it.qtyReturned || 0).toFixed(2))}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div id="returnForm-${inv.number}" class="return-form" style="display:none;"></div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+/* toggle show items */
+function toggleInvoiceDetails(num) {
+  const el = document.getElementById(`details-${num}`);
+  if (!el) return;
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+/* delete invoice */
+function deleteInvoice(num) {
+  if (!confirm("Delete this invoice permanently?")) return;
+  const invoice = invoicesHistory.find(inv => inv.number === num);
+  const invoiceDate = invoice ? invoice.date : null;
+  
+  invoicesHistory = invoicesHistory.filter(inv => inv.number !== num);
+  saveInvoicesHistoryToStorage();
+  renderInvoiceHistory();
+  
+  // Update daily sales if the invoice date is within the currently selected range
+  const fromDate = document.getElementById("searchFromDate").value;
+  const toDate = document.getElementById("searchToDate").value || fromDate;
+  if (invoiceDate >= fromDate && invoiceDate <= toDate) {
+    calculateSales(fromDate, toDate);
+  }
+}
+
+/* ===========================
+   Return All
+   =========================== */
+function returnAllInvoice(num) {
+  if (!confirm("Return ALL items from this invoice?")) return;
+  const inv = invoicesHistory.find(i => i.number === num);
+  if (!inv || inv.returned) return;
+  inv.items.forEach(it => {
+    const rem = (it.qtySold - (it.qtyReturned || 0));
+    if (rem > 0) {
+      const stockItem = data.find(d => d.item === it.item);
+      if (stockItem) stockItem.stock = parseFloat((stockItem.stock + rem).toFixed(2));
+      it.qtyReturned = (it.qtyReturned || 0) + rem;
+    }
+  });
+  inv.returned = true;
+  saveToLocalStorage();
+  saveInvoicesHistoryToStorage();
+  renderTable(data);
+  renderInvoiceHistory();
+  alert("All items returned and stock updated.");
+  
+  // Update daily sales if the invoice date is within the currently selected range
+  const fromDate = document.getElementById("searchFromDate").value;
+  const toDate = document.getElementById("searchToDate").value || fromDate;
+  if (inv.date >= fromDate && inv.date <= toDate) {
+    calculateSales(fromDate, toDate);
+  }
+}
+
+/* ===========================
+   Inline Return Items form
+   =========================== */
+function toggleReturnForm(num) {
+  const formDiv = document.getElementById(`returnForm-${num}`);
+  if (!formDiv) return;
+  if (formDiv.style.display === "block") { formDiv.style.display = "none"; formDiv.innerHTML = ""; return; }
+  const inv = invoicesHistory.find(i => i.number === num);
+  if (!inv) return;
+  // build form
+  let html = `<div><strong>Return Items (invoice #${inv.number})</strong></div>`;
+  html += `<table style="width:100%;margin-top:8px;"><thead><tr><th>Item</th><th>Remaining</th><th>Return Qty</th></tr></thead><tbody>`;
+  inv.items.forEach((it, idx) => {
+    const rem = parseFloat(it.qtySold) - parseFloat(it.qtyReturned || 0);
+    html += `<tr>
+      <td>${escapeHtml(it.item)}</td>
+      <td>${parseFloat(rem.toFixed(2))}</td>
+      <td><input type="number" id="return-${num}-${idx}" step="0.01" min="0" max="${parseFloat(rem.toFixed(2))}" value="0" style="width:100px;"></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  html += `<div style="margin-top:8px;"><button class="btn-primary" onclick="confirmReturnItems(${num})">Confirm Return</button> <button class="btn-secondary" onclick="toggleReturnForm(${num})">Cancel</button></div>`;
+  formDiv.innerHTML = html;
+  formDiv.style.display = "block";
+  // ensure details are visible
+  const detailsEl = document.getElementById(`details-${num}`);
+  if (detailsEl) detailsEl.style.display = "block";
+}
+
+/* confirm return items inline */
+function confirmReturnItems(num) {
+  const inv = invoicesHistory.find(i => i.number === num);
+  if (!inv) return;
+  let anyReturned = false;
+  for (let idx = 0; idx < inv.items.length; idx++) {
+    const it = inv.items[idx];
+    const input = document.getElementById(`return-${num}-${idx}`);
+    if (!input) continue;
+    let r = parseFloat(input.value);
+    if (isNaN(r) || r <= 0) continue;
+    const rem = parseFloat(it.qtySold) - parseFloat(it.qtyReturned || 0);
+    if (r > rem + 1e-9) { alert(`Return qty for ${it.item} exceeds remaining (${parseFloat(rem.toFixed(2))})`); return; }
+    // update stock
+    const stockItem = data.find(d => d.item === it.item);
+    if (stockItem) stockItem.stock = parseFloat((stockItem.stock + r).toFixed(2));
+    // update invoice item returned qty
+    it.qtyReturned = parseFloat(((it.qtyReturned || 0) + r).toFixed(2));
+    anyReturned = true;
+  }
+  if (!anyReturned) { alert("No quantities entered to return."); return; }
+  // check if all items fully returned
+  let allReturned = inv.items.every(it => (parseFloat(it.qtySold) - parseFloat(it.qtyReturned || 0)) <= 1e-9);
+  if (allReturned) inv.returned = true;
+  saveToLocalStorage();
+  saveInvoicesHistoryToStorage();
+  renderTable(data);
+  renderInvoiceHistory();
+  alert("Selected items returned and stock updated.");
+  
+  // Update daily sales if the invoice date is within the currently selected range
+  const fromDate = document.getElementById("searchFromDate").value;
+  const toDate = document.getElementById("searchToDate").value || fromDate;
+  if (inv.date >= fromDate && inv.date <= toDate) {
+    calculateSales(fromDate, toDate);
+  }
+}
+
+/* ===========================
+   Edit invoice from history & Save Edited Invoice
+   =========================== */
+function editInvoice(num) {
+  const inv = invoicesHistory.find(i => i.number === num);
+  if (!inv || inv.returned) return; // don't edit returned invoices
+  editingInvoiceNumber = num;
+  originalInvoiceForEdit = JSON.parse(JSON.stringify(inv));
+  // build invoiceEditor from remaining quantities
+  invoiceEditor = inv.items.map(it => {
+    const rem = parseFloat(it.qtySold) - parseFloat(it.qtyReturned || 0);
+    return { item: it.item, price: it.price, qty: parseFloat(rem.toFixed(2)) };
+  }).filter(x => x.qty > 0);
+  document.getElementById("invoiceNumber").textContent = inv.number;
+  document.getElementById("invoiceDate").textContent = inv.date;
+  renderInvoice();
+  document.getElementById("saveEditedInvoiceBtn").style.display = "inline-block";
+  document.getElementById("sellOnlyBtn").style.display = "none";
+  document.getElementById("sellAndPrintBtn").style.display = "none";
+  window.scrollTo(0,0);
+}
+
+/* Save edited invoice */
+function saveEditedInvoice() {
+  if (editingInvoiceNumber === null) return;
+  const idx = invoicesHistory.findIndex(i => i.number === editingInvoiceNumber);
+  if (idx === -1) return;
+
+  // temp stock check: restore old remaining, then deduct new remaining, ensure none negative
+  const tempStock = {};
+  data.forEach(d => tempStock[d.item] = d.stock || 0);
+
+  // add back original remaining (old.qtySold - old.qtyReturned)
+  originalInvoiceForEdit.items.forEach(oldIt => {
+    const remOld = parseFloat(oldIt.qtySold) - parseFloat(oldIt.qtyReturned || 0);
+    tempStock[oldIt.item] = (tempStock[oldIt.item] || 0) + remOld;
+  });
+
+  // subtract new remaining from editor
+  invoiceEditor.forEach(newIt => {
+    tempStock[newIt.item] = (tempStock[newIt.item] || 0) - newIt.qty;
+  });
+
+  // validate none negative
+  for (const k in tempStock) {
+    if (tempStock[k] < -1e-9) { alert("Cannot save edited invoice: not enough stock for some items."); return; }
+  }
+
+  // commit: add back old remaining
+  originalInvoiceForEdit.items.forEach(oldIt => {
+    const remOld = parseFloat(oldIt.qtySold) - parseFloat(oldIt.qtyReturned || 0);
+    const stockItem = data.find(d => d.item === oldIt.item);
+    if (stockItem) stockItem.stock = parseFloat((stockItem.stock + remOld).toFixed(2));
+  });
+
+  // subtract new remaining
+  invoiceEditor.forEach(newIt => {
+    const stockItem = data.find(d => d.item === newIt.item);
+    if (stockItem) stockItem.stock = parseFloat((stockItem.stock - newIt.qty).toFixed(2));
+  });
+
+  // build new invoice record: keep previous qtyReturned where possible
+  const newItems = [];
+
+  // For each item in invoiceEditor (remaining), determine qtySold = prevReturned + remaining
+  invoiceEditor.forEach(ed => {
+    const original = originalInvoiceForEdit.items.find(o => o.item === ed.item);
+    const prevReturned = original ? (original.qtyReturned || 0) : 0;
+    const newQtySold = parseFloat((prevReturned + ed.qty).toFixed(2));
+    newItems.push({ item: ed.item, price: ed.price, qtySold: newQtySold, qtyReturned: prevReturned });
+  });
+
+  // Also include any original items that were fully returned previously but not present in editor
+  originalInvoiceForEdit.items.forEach(oldIt => {
+    const exists = newItems.find(n => n.item === oldIt.item);
+    if (!exists) {
+      newItems.push({ item: oldIt.item, price: oldIt.price, qtySold: oldIt.qtySold, qtyReturned: oldIt.qtyReturned || 0 });
+    }
+  });
+
+  // compute total (only remaining amounts contribute to total)
+  const newTotal = newItems.reduce((s,it) => s + ((it.qtySold - (it.qtyReturned||0)) * it.price), 0);
+
+  invoicesHistory[idx] = {
+    number: editingInvoiceNumber,
+    date: originalInvoiceForEdit.date,
+    items: newItems,
+    total: parseFloat(newTotal.toFixed(2)),
+    returned: newItems.every(it => (it.qtySold - (it.qtyReturned||0)) <= 1e-9)
+  };
+
+  saveToLocalStorage();
+  saveInvoicesHistoryToStorage();
+  alert("Invoice updated successfully.");
+  exitEditMode();
+  invoiceEditor = [];
+  document.getElementById("invoiceContainer").style.display = "none";
+  renderTable(data);
+  renderInvoiceHistory();
+  startNewInvoiceDisplay();
+}
+
+/* bind Save Edited Invoice button */
+document.getElementById("saveEditedInvoiceBtn").addEventListener("click", saveEditedInvoice);
+
+/* ===========================
+   Exit edit mode helper
+   =========================== */
+function exitEditMode() {
+  editingInvoiceNumber = null;
+  originalInvoiceForEdit = null;
+  document.getElementById("saveEditedInvoiceBtn").style.display = "none";
+  document.getElementById("sellOnlyBtn").style.display = "inline-block";
+  document.getElementById("sellAndPrintBtn").style.display = "inline-block";
+}
+
+/* ===========================
+   Search / filters
+   =========================== */
+document.getElementById("search").addEventListener("input", function() {
+  const searchTerm = this.value.toLowerCase().trim();
+  const filtered = data.filter(d => 
+    d.item.toLowerCase().includes(searchTerm) ||
+    (d.barcode && d.barcode.toLowerCase().includes(searchTerm))
+  );
+  // Reset to show only 5 items when search changes
+  if (searchTerm) {
+    showAllItems = false;
+  }
+  renderTable(filtered);
+});
+document.getElementById("searchInvoiceDate").addEventListener("input", renderInvoiceHistory);
+
+/* ===========================
+   Enter navigation (single handler)
+   =========================== */
+document.addEventListener('keydown', function(e){
+  if (e.key !== 'Enter') return;
+
+  // form inputs
+  const formInputs = Array.from(document.querySelectorAll('#formContainer input'));
+  const active = document.activeElement;
+  const formIndex = formInputs.indexOf(active);
+  if (formIndex !== -1) {
+    e.preventDefault();
+    const next = formInputs[formIndex + 1];
+    if (next) { next.focus(); try { next.select(); } catch(_) {} }
+    else { document.getElementById('saveItem').click(); }
+    return;
+  }
+
+  // invoice qty inputs
+  const qtyInputs = Array.from(document.querySelectorAll('#invoiceTable input[type="number"]'));
+  const qtyIndex = qtyInputs.indexOf(active);
+  if (qtyIndex !== -1) {
+    e.preventDefault();
+    const next = qtyInputs[qtyIndex + 1];
+    if (next) { next.focus(); try { next.select(); } catch(_) {} }
+    else {
+      if (editingInvoiceNumber === null) document.getElementById('sellOnlyBtn').focus();
+      else document.getElementById('saveEditedInvoiceBtn').focus();
+    }
+    return;
+  }
+});
+
+/* ===========================
+   Backup and Restore
+   =========================== */
+document.getElementById("backupBtn").addEventListener("click", () => {
+  try {
+    // Create a comprehensive backup object containing all data
+    const backup = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      items: data,
+      invoicesHistory: invoicesHistory,
+      invoiceCounter: invoiceCounter
+    };
+    
+    // Convert to JSON string
+    const jsonData = JSON.stringify(backup);
+    
+    // Create download blob
+    const blob = new Blob([jsonData], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    
+    // Create and trigger download link
+    const a = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `item-manager-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    alert('Backup created successfully!');
+  } catch (err) {
+    console.error('Backup failed:', err);
+    alert(`Backup failed: ${err.message}`);
+  }
+});
+
+document.getElementById("restoreBtn").addEventListener("click", () => {
+  // Create hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
+  fileInput.style.display = 'none';
+  
+  // Handle file selection
+  fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const backupData = JSON.parse(event.target.result);
+        
+        // Validate backup format
+        if (!backupData.items || !backupData.invoicesHistory || !backupData.invoiceCounter) {
+          throw new Error('Invalid backup file format');
+        }
+        
+        // Confirm before overwriting data
+        if (confirm('This will replace all current data with the backup. Continue?')) {
+          // Update data objects
+          data = backupData.items;
+          invoicesHistory = backupData.invoicesHistory;
+          invoiceCounter = backupData.invoiceCounter;
+          
+          // Save to local storage
+          saveToLocalStorage();
+          saveInvoicesHistoryToStorage();
+          localStorage.setItem('invoiceCounter', invoiceCounter);
+          
+          // Re-render UI
+          renderTable(data);
+          renderInvoiceHistory();
+          
+          alert('Data restored successfully!');
+        }
+      } catch (err) {
+        console.error('Restore failed:', err);
+        alert(`Restore failed: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+    
+    // Clean up
+    document.body.removeChild(fileInput);
+  };
+  
+  // Trigger file selection dialog
+  document.body.appendChild(fileInput);
+  fileInput.click();
+});
+
+/* ===========================
+   Toggle Items Display
+   =========================== */
+function toggleItemsDisplay() {
+  showAllItems = !showAllItems;
+  // When using search, we need to apply the toggle to the filtered results
+  const searchTerm = document.getElementById("search").value.toLowerCase().trim();
+  if (searchTerm) {
+    const filtered = data.filter(d => 
+      d.item.toLowerCase().includes(searchTerm) ||
+      (d.barcode && d.barcode.toLowerCase().includes(searchTerm))
+    );
+    renderTable(filtered);
+  } else {
+    renderTable(data);
+  }
+}
+
+/* ===========================
+   Toggle Invoice History Display
+   =========================== */
+function toggleHistoryDisplay() {
+  historyVisible = !historyVisible;
+  const historySection = document.getElementById("invoiceHistorySection");
+  const toggleBtn = document.getElementById("toggleHistoryBtn");
+  
+  if (historyVisible) {
+    historySection.style.display = "block";
+    toggleBtn.textContent = "Hide History";
+  } else {
+    historySection.style.display = "none";
+    toggleBtn.textContent = "Show History";
+  }
+  
+  // Store preference in local storage
+  localStorage.setItem('historyVisible', historyVisible);
+}
+
+// Add event listener for the toggle history button
+document.getElementById("toggleHistoryBtn").addEventListener("click", toggleHistoryDisplay);
+
+/* ===========================
+   Daily Sales Summary
+   =========================== */
+let dailySalesVisible = true; // By default, daily sales section is visible
+
+function toggleDailySales() {
+  dailySalesVisible = !dailySalesVisible;
+  const dailySalesContent = document.getElementById("dailySalesContent");
+  const toggleBtn = document.getElementById("toggleDailySalesBtn");
+  
+  if (dailySalesVisible) {
+    dailySalesContent.style.display = "block";
+    toggleBtn.textContent = "Hide";
+  } else {
+    dailySalesContent.style.display = "none";
+    toggleBtn.textContent = "Show";
+  }
+  
+  // Store preference in local storage
+  localStorage.setItem('dailySalesVisible', dailySalesVisible);
+}
+
+// Smart sales calculation - handles both single date and date range automatically
+function calculateSales(fromDate, toDate) {
+  // If no from date, use today
+  if (!fromDate) {
+    const today = new Date();
+    fromDate = today.toISOString().split('T')[0];
+    document.getElementById("searchFromDate").value = fromDate;
+  }
+  
+  // If no to date provided, treat as single date search
+  if (!toDate) {
+    toDate = fromDate;
+  }
+  
+  // Validate date logic
+  if (new Date(fromDate) > new Date(toDate)) {
+    alert("From date cannot be later than to date");
+    return;
+  }
+  
+  // Filter invoices by date or date range
+  const filteredInvoices = invoicesHistory.filter(inv => {
+    const invoiceDate = new Date(inv.date);
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    return invoiceDate >= from && invoiceDate <= to;
+  });
+  
+  // Calculate total sales amount
+  let totalSales = 0;
+  let totalItems = 0;
+  
+  filteredInvoices.forEach(invoice => {
+    // Only count non-returned invoices in the total
+    if (!invoice.returned) {
+      totalSales += parseFloat(invoice.total);
+      
+      // Count items sold (taking returns into account)
+      invoice.items.forEach(item => {
+        const sold = parseFloat(item.qtySold) - parseFloat(item.qtyReturned || 0);
+        totalItems += sold;
+      });
+    }
+  });
+  
+  // Update the UI
+  document.getElementById("totalSalesAmount").textContent = parseFloat(totalSales.toFixed(2));
+  document.getElementById("totalItemsSold").textContent = totalItems.toFixed(0);
+  document.getElementById("totalInvoices").textContent = filteredInvoices.length;
+}
+
+// Helper functions for quick date selections
+function setTodayDate() {
+  const today = new Date();
+  const dateString = today.toISOString().split('T')[0];
+  document.getElementById("searchFromDate").value = dateString;
+  document.getElementById("searchToDate").value = "";
+  calculateSales(dateString);
+}
+
+
+
+function setThisMonthDates() {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  
+  const fromDate = firstDay.toISOString().split('T')[0];
+  const toDate = today.toISOString().split('T')[0];
+  
+  document.getElementById("searchFromDate").value = fromDate;
+  document.getElementById("searchToDate").value = toDate;
+  calculateSales(fromDate, toDate);
+}
+
+// Calculate and display sales for date range
+function calculateRangeSales(fromDate, toDate) {
+  // Validate dates
+  if (!fromDate || !toDate) {
+    alert("Please select both from and to dates");
+    return;
+  }
+  
+  if (new Date(fromDate) > new Date(toDate)) {
+    alert("From date cannot be later than to date");
+    return;
+  }
+  
+  // Filter invoices by date range
+  const filteredInvoices = invoicesHistory.filter(inv => {
+    const invoiceDate = new Date(inv.date);
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    return invoiceDate >= from && invoiceDate <= to;
+  });
+  
+  // Calculate total sales amount
+  let totalSales = 0;
+  let totalItems = 0;
+  
+  filteredInvoices.forEach(invoice => {
+    // Only count non-returned invoices in the total
+    if (!invoice.returned) {
+      totalSales += parseFloat(invoice.total);
+      
+      // Count items sold (taking returns into account)
+      invoice.items.forEach(item => {
+        const sold = parseFloat(item.qtySold) - parseFloat(item.qtyReturned || 0);
+        totalItems += sold;
+      });
+    }
+  });
+  
+  // Update the UI
+  document.getElementById("totalSalesAmount").textContent = parseFloat(totalSales.toFixed(2));
+  document.getElementById("totalItemsSold").textContent = totalItems.toFixed(0);
+  document.getElementById("totalInvoices").textContent = filteredInvoices.length;
+  
+  // Clear single date field to show we're in range mode
+  document.getElementById("searchDailySalesDate").value = "";
+}
+
+// Add event listeners for daily sales functionality
+document.getElementById("toggleDailySalesBtn").addEventListener("click", toggleDailySales);
+document.getElementById("searchSalesBtn").addEventListener("click", function() {
+  const fromDate = document.getElementById("searchFromDate").value;
+  const toDate = document.getElementById("searchToDate").value;
+  if (!fromDate) {
+    alert("Please select at least a 'From Date'");
+    return;
+  }
+  calculateSales(fromDate, toDate);
+});
+document.getElementById("todaysSalesBtn").addEventListener("click", setTodayDate);
+document.getElementById("thisMonthBtn").addEventListener("click", setThisMonthDates);
+
+/* ===========================
+   Init render
+   =========================== */
+// Load history visibility preference from local storage if available
+const storedHistoryVisible = localStorage.getItem('historyVisible');
+if (storedHistoryVisible !== null) {
+  historyVisible = storedHistoryVisible === 'true';
+  // Apply initial visibility state
+  document.getElementById("invoiceHistorySection").style.display = historyVisible ? "block" : "none";
+  document.getElementById("toggleHistoryBtn").textContent = historyVisible ? "Hide History" : "Show History";
+}
+
+// Load daily sales visibility preference from local storage if available
+const storedDailySalesVisible = localStorage.getItem('dailySalesVisible');
+if (storedDailySalesVisible !== null) {
+  dailySalesVisible = storedDailySalesVisible === 'true';
+  // Apply initial visibility state
+  document.getElementById("dailySalesContent").style.display = dailySalesVisible ? "block" : "none";
+  document.getElementById("toggleDailySalesBtn").textContent = dailySalesVisible ? "Hide" : "Show";
+}
+
+// Initialize with today's date
+const today = new Date();
+document.getElementById("searchFromDate").value = today.toISOString().split('T')[0];
+calculateSales(today.toISOString().split('T')[0]); // Calculate today's sales by default
+
+renderTable(data);
+renderInvoiceHistory();
+</script>
+  </div>
+</div>
+</body>
+</html>
